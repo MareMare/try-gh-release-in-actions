@@ -149,3 +149,4 @@ jobs:
 ## 参考
 * [gh release create wildcard '*' not working on windows](https://github.com/cli/cli/issues/5099)
 * [cli/cli/.github/workflows/deployment.yml](https://github.com/cli/cli/blob/541ce0e5b49269b8b39707b3d16cfbd01d79b9a0/.github/workflows/deployment.yml#L344C43-L344C49)
+* [Bashで '\*\*' の展開をONにする \(globstar\) \- いろいろ備忘録日記](https://devlights.hatenablog.com/entry/2023/02/20/073000)
