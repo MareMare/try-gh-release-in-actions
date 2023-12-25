@@ -1,0 +1,101 @@
+name: release-pwsh
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag name. eg) "v0.0.1, v0.0.1-beta.1"'
+        default: 'v0.0.1-beta.1'
+        required: false
+  # push: # Sequence of patterns matched against refs/tags
+  #   tags:
+  #     - 'v*' # Push events to matching v*, i.e. v1.0.0, v1.0.0-beta.1
+
+env:
+  TAG_NAME: ${{ inputs.tag || github.ref_name }}
+  CONFIGURATION: Release
+  DOTNET_VERSION: "8.0.x"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  packaging:
+    name: 📦 Packaging
+    runs-on: windows-latest
+    if: startsWith(inputs.tag || github.ref_name, 'v')
+    steps:
+      - name: 🛒 Checkout
+        uses: actions/checkout@v4.1.1
+        with:
+          fetch-depth: 0
+          filter: tree:0
+      - name: ✨ Setup .NET ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - name: 🛠️ Build
+        run: dotnet build --configuration ${{ env.CONFIGURATION }}
+      - name: 🧪 Test
+        run: dotnet test --configuration ${{ env.CONFIGURATION }} --no-build --verbosity normal --collect:"XPlat Code Coverage" --logger trx --results-directory coverage  --filter 'Category!=local'
+      - name: 🩺 Code coverage report
+        shell: bash
+        run: |
+          dotnet tool install -g dotnet-reportgenerator-globaltool
+          reportgenerator -reports:coverage/*/coverage.cobertura.xml -targetdir:CodeCoverage -reporttypes:'MarkdownSummaryGithub'
+          echo "$(cat CodeCoverage/SummaryGithub.md)" >> $GITHUB_STEP_SUMMARY
+      - name: 📦 Pack
+        run: dotnet pack --output ./artifacts
+
+      - name: 📝 Dump 1...
+        run: |
+          gh --version
+          echo "ls **/*.*nupkg: "
+          echo $(ls **/*.*nupkg)
+          echo "ls artifacts: "
+          echo $(ls artifacts)
+
+      - name: 🎨 Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-packages
+          path: |
+            **/*.nupkg
+            **/*.snupkg
+          if-no-files-found: error # 'warn' or 'ignore' are also available, defaults to `warn`
+
+  release:
+    name: 🎉 Release
+    runs-on: windows-latest
+    needs: [packaging]
+    if: ${{ success() }}
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    permissions:
+      contents: write
+    steps:
+      - name: 🛒 Checkout
+        uses: actions/checkout@v4.1.1
+        with:
+          fetch-depth: 0
+          filter: tree:0
+      - name: 🎨 Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: nuget-packages
+          path: ./
+
+      - name: 📝 Dump 2...
+        run: |
+          gh --version
+          echo "ls **/*.*nupkg: "
+          echo $(ls **/*.*nupkg)
+          echo "ls artifacts: "
+          echo $(ls artifacts)
+
+      - name: 📝 Create Release ${{ env.TAG_NAME }}
+        run: gh release create ${{ env.TAG_NAME }} --generate-notes --draft --prerelease
+      - name: ➕ Upload assets
+        run: gh release upload ${{ env.TAG_NAME }} $(ls **/*.*nupkg)
+        shell: pwsh
+      - run: echo "### ✅ Release succeeded! ${{ env.TAG_NAME }} 🌟" >> $GITHUB_STEP_SUMMARY

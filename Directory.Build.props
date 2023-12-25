@@ -1,0 +1,54 @@
+﻿<Project>
+  <!-- カスタムプロパティ -->
+  <PropertyGroup>
+    <IsTestProject>$(MSBuildProjectName.Contains('Tests'))</IsTestProject>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '!$(IsTestProject)' == 'True' " Label="Common package properties">
+    <!-- Common package properties -->
+    <LangVersion>12.0</LangVersion>
+    <Deterministic>true</Deterministic>
+    <NeutralLanguage>ja-JP</NeutralLanguage>
+    <RestorePackagesWithLockFile>false</RestorePackagesWithLockFile>
+    <!-- XML Documentation file -->
+    <GenerateDocumentationFile>True</GenerateDocumentationFile>
+    <!-- NuGet info -->
+    <IncludeSymbols>True</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <!--- SourceLink configuration -->
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <!-- MinVer configuration -->
+    <MinVerDefaultPreReleaseIdentifiers>beta</MinVerDefaultPreReleaseIdentifiers>
+    <MinVerTagPrefix>v</MinVerTagPrefix>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+  <!-- コード分析 -->
+  <PropertyGroup Condition=" '!$(IsTestProject)' == 'True' ">
+    <AnalysisLevel>latest-all</AnalysisLevel>
+    <AnalysisMode>All</AnalysisMode>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+  </PropertyGroup>
+  <!-- コード分析 (Tests 用) -->
+  <PropertyGroup Condition=" '$(IsTestProject)' == 'True' ">
+    <NoWarn>1701;1702;CA1707</NoWarn>
+  </PropertyGroup>
+  <!--StyleCop.Analyzer -->
+  <ItemGroup Condition=" '!$(IsTestProject)' == 'True' ">
+    <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.556">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <AdditionalFiles Include="$(MSBuildThisFileDirectory)stylecop.json" Link="stylecop.json" />
+  </ItemGroup>
+  <!--- SourceLink NuGet package -->
+  <ItemGroup Condition=" '!$(IsTestProject)' == 'True' ">
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
+  </ItemGroup>
+  <!-- MinVer -->
+  <ItemGroup Condition=" '!$(IsTestProject)' == 'True' ">
+    <PackageReference Include="MinVer" Version="4.3.0" PrivateAssets="All" />
+  </ItemGroup>
+</Project>
